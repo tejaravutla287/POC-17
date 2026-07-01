@@ -5,10 +5,9 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  # Replace these with your exact Azure Service Connection details
   azureServiceConnection: 'MyAzureServiceConnection' 
-  resourceGroupName: 'rg-terraform-backend' # RG where your backend storage lives
-  storageAccountName: 'stpoc17backend'       # Unique storage account for tfstate
+  resourceGroupName: 'rg-terraform-backend' 
+  storageAccountName: 'stpoc17backend'       
   containerName: 'tfstate'
   tfstateKey: 'poc17.tfstate'
 
@@ -18,7 +17,6 @@ stages:
   jobs:
   - job: Pack
     steps:
-    # Package HTML/JS source code
     - task: ArchiveFiles@2
       inputs:
         rootFolderOrFile: 'src'
@@ -27,14 +25,12 @@ stages:
         archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
         replaceExistingArchive: true
 
-    # Publish App Artifact
     - task: PublishBuildArtifacts@1
       inputs:
         PathtoPublish: '$(Build.ArtifactStagingDirectory)/app.zip'
         ArtifactName: 'drop-app'
         publishLocation: 'Container'
 
-    # Publish Terraform files as an artifact
     - task: PublishBuildArtifacts@1
       inputs:
         PathtoPublish: 'terraform'
@@ -54,8 +50,8 @@ stages:
         artifactName: 'drop-terraform'
         downloadPath: '$(System.ArtifactsDirectory)'
 
-    # Initialize Terraform using Native Task
     - task: TerraformTaskV4@4
+      displayName: 'Terraform Init'
       inputs:
         provider: 'azurerm'
         command: 'init'
@@ -66,8 +62,8 @@ stages:
         backendAzureRmContainerName: '$(containerName)'
         backendAzureRmKey: '$(tfstateKey)'
 
-    # Apply Infrastructure using Native Task
     - task: TerraformTaskV4@4
+      displayName: 'Terraform Apply'
       inputs:
         provider: 'azurerm'
         command: 'apply'
@@ -87,11 +83,10 @@ stages:
         artifactName: 'drop-app'
         downloadPath: '$(System.ArtifactsDirectory)'
 
-    # Deploy ZIP package to the newly created Free App Service
     - task: AzureRmWebAppDeployment@4
       inputs:
         ConnectionType: 'AzureRM'
         azureSubscription: '$(azureServiceConnection)'
         appType: 'webApp'
-        WebAppName: 'webapp-poc17-unique-name' # Must match your variable string exactly
+        WebAppName: 'webapp-poc17-unique-name' 
         Package: '$(System.ArtifactsDirectory)/drop-app/app.zip'
