@@ -15,5 +15,5 @@ variable "app_service_plan_name" {
 
 variable "app_service_name" {
   type    = string
-  default = "webapp-poc17-unique-name" # Ensure this name is globally unique
+  default = "webapp-poc17-bhanu-teja" # Ensure this name is globally unique
 }
