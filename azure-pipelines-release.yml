@@ -1,0 +1,68 @@
+trigger: none # Disabled automatic triggers so it can be run manually or chained after the build pipeline
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  azureServiceConnection: 'MyAzureServiceConnection'
+  resourceGroupName: 'rg-terraform-backend'
+  storageAccountName: 'stpoc17backend'
+  containerName: 'tfstate'
+  tfstateKey: 'poc17.tfstate'
+  webAppName: 'webapp-poc17-unique-name'
+
+stages:
+- stage: ProvisionInfrastructure
+  displayName: '1. Terraform Plan & Apply'
+  jobs:
+  - job: TerraformDeploy
+    steps:
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        buildType: 'specific'
+        project: '$(System.TeamProject)'
+        definition: '1' # Change to match your Build Pipeline ID
+        buildVersionToDownload: 'latest'
+        artifactName: 'drop-terraform'
+        downloadPath: '$(System.ArtifactsDirectory)'
+
+    - task: TerraformCLI@0
+      inputs:
+        command: 'init'
+        workingDirectory: '$(System.ArtifactsDirectory)/drop-terraform'
+        backendType: 'azurerm'
+        backendServiceArm: '$(azureServiceConnection)'
+        backendAzureRmResourceGroupName: '$(resourceGroupName)'
+        backendAzureRmStorageAccountName: '$(storageAccountName)'
+        backendAzureRmContainerName: '$(containerName)'
+        backendAzureRmKey: '$(tfstateKey)'
+
+    - task: TerraformCLI@0
+      inputs:
+        command: 'apply'
+        workingDirectory: '$(System.ArtifactsDirectory)/drop-terraform'
+        environmentServiceName: '$(azureServiceConnection)'
+        commandOptions: '-auto-approve'
+
+- stage: DeployApplication
+  displayName: '2. App Service Code Deployment'
+  dependsOn: ProvisionInfrastructure
+  jobs:
+  - job: AppDeploy
+    steps:
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        buildType: 'specific'
+        project: '$(System.TeamProject)'
+        definition: '1' # Change to match your Build Pipeline ID
+        buildVersionToDownload: 'latest'
+        artifactName: 'drop-app'
+        downloadPath: '$(System.ArtifactsDirectory)'
+
+    - task: AzureRmWebAppDeployment@4
+      inputs:
+        ConnectionType: 'AzureRM'
+        azureSubscription: '$(azureServiceConnection)'
+        appType: 'webApp'
+        WebAppName: '$(webAppName)'
+        Package: '$(System.ArtifactsDirectory)/drop-app/app.zip'
