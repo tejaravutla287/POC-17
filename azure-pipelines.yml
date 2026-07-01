@@ -10,8 +10,6 @@ variables:
   storageAccountName: 'stpoc17backend'       
   containerName: 'tfstate'
   tfstateKey: 'poc17.tfstate'
-  # Safe extraction source string variable
-  tfDownloadUrl: 'https://hashicorp.com'
 
 stages:
 - stage: Build
@@ -61,9 +59,8 @@ stages:
         addSpnToEnvironment: true
         workingDirectory: '$(System.ArtifactsDirectory)/drop-terraform'
         inlineScript: |
-          echo "===> Downloading Independent Terraform Binary..."
-          # Fetch using the secure parsed pipeline variable context safely
-          wget -q -O /tmp/terraform.zip "$(tfDownloadUrl)"
+          echo "===> Downloading Independent Terraform Binary Natively..."
+          wget -q -O /tmp/terraform.zip "$TF_DOWNLOAD_URL"
           
           echo "===> Extracting and moving binary..."
           sudo unzip -o /tmp/terraform.zip -d /tmp/
@@ -88,6 +85,9 @@ stages:
 
           echo "===> Applying Configuration..."
           terraform apply -auto-approve
+      # Env dictionary mapping maps the string directly to terminal environment variables
+      env:
+        TF_DOWNLOAD_URL: 'https://hashicorp.com'
 
 - stage: DeployApp
   displayName: 'Deploy Application Code'
