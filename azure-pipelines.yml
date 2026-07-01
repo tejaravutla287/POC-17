@@ -59,13 +59,8 @@ stages:
         addSpnToEnvironment: true
         workingDirectory: '$(System.ArtifactsDirectory)/drop-terraform'
         inlineScript: |
-          echo "===> Downloading Independent Terraform Binary Natively..."
-          wget -q -O /tmp/terraform.zip "$TF_DOWNLOAD_URL"
-          
-          echo "===> Extracting and moving binary..."
-          sudo unzip -o /tmp/terraform.zip -d /tmp/
-          sudo mv /tmp/terraform /usr/local/bin/
-          rm -f /tmp/terraform.zip
+          echo "===> Installing Terraform via Snap to bypass HashiCorp web rate limits..."
+          sudo snap install terraform --classic
           
           echo "===> Verifying local installation:"
           terraform -version
@@ -85,27 +80,3 @@ stages:
 
           echo "===> Applying Configuration..."
           terraform apply -auto-approve
-      # Env dictionary mapping maps the string directly to terminal environment variables
-      env:
-        TF_DOWNLOAD_URL: 'https://hashicorp.com'
-
-- stage: DeployApp
-  displayName: 'Deploy Application Code'
-  dependsOn: DeployInfrastructure
-  jobs:
-  - job: Deploy
-    steps:
-    - task: DownloadBuildArtifacts@0
-      inputs:
-        buildType: 'current'
-        downloadType: 'single'
-        artifactName: 'drop-app'
-        downloadPath: '$(System.ArtifactsDirectory)'
-
-    - task: AzureRmWebAppDeployment@4
-      inputs:
-        ConnectionType: 'AzureRM'
-        azureSubscription: '$(azureServiceConnection)'
-        appType: 'webApp'
-        WebAppName: 'webapp-poc17-unique-name' 
-        Package: '$(System.ArtifactsDirectory)/drop-app/app.zip'
