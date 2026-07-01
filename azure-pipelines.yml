@@ -59,7 +59,7 @@ stages:
         addSpnToEnvironment: true
         workingDirectory: '$(System.ArtifactsDirectory)/drop-terraform'
         inlineScript: |
-          echo "===> Installing Terraform via Snap to bypass HashiCorp web rate limits..."
+          echo "===> Installing Terraform via Snap..."
           sudo snap install terraform --classic
           
           echo "===> Verifying local installation:"
@@ -71,8 +71,8 @@ stages:
           export ARM_TENANT_ID=$tenantId
           export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 
-          echo "===> Initializing Backend..."
-          terraform init \
+          echo "===> Initializing Backend with Reconfigure Flag..."
+          terraform init -reconfigure \
             -backend-config="resource_group_name=$(resourceGroupName)" \
             -backend-config="storage_account_name=$(storageAccountName)" \
             -backend-config="container_name=$(containerName)" \
