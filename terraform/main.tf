@@ -5,7 +5,7 @@ terraform {
       version = "~> 3.0"
     }
   }
-  backend "azurerm" {} # Configured dynamically in DevOps pipeline
+  backend "azurerm" {} 
 }
 
 provider "azurerm" {
@@ -17,16 +17,17 @@ resource "azurerm_resource_group" "rg" {
   location = var.location
 }
 
-# Free Tier App Service Plan (Windows-based for easy static/HTML or .NET testing)
+# Free Tier App Service Plan configured for Linux
 resource "azurerm_service_plan" "asp" {
   name                = var.app_service_plan_name
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  os_type             = "Windows"
-  sku_name            = "F1" # F1 is the completely FREE tier
+  os_type             = "Linux" # Changed from Windows
+  sku_name            = "F1"    # Completely FREE tier
 }
 
-resource "azurerm_windows_web_app" "app" {
+# Linux Web App configuration
+resource "azurerm_linux_web_app" "app" { # Changed to linux_web_app
   name                = var.app_service_name
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
@@ -34,6 +35,10 @@ resource "azurerm_windows_web_app" "app" {
 
   site_config {
     always_on = false # Required to be false for Free Tier
+    # Configured to host basic HTML/JS files natively
+    application_stack {
+      node_version = "18-lts" 
+    }
   }
 
   app_settings = {
