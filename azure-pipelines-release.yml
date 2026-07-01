@@ -9,7 +9,7 @@ variables:
   storageAccountName: 'poc17storageacc'
   containerName: 'tfstate'
   tfstateKey: 'poc17.tfstate'
-  webAppName: 'webapp-poc17-unique-name' # Must exactly match var.app_service_name in variables.tf
+  webAppName: 'webapp-poc17-bhanu-teja' # Must exactly match var.app_service_name in variables.tf
   buildPipelineName: 'POC-17-CI' # Ensure this matches your exact Build pipeline text name string
 
 stages:
