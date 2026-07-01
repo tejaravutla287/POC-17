@@ -5,7 +5,7 @@ variable "resource_group_name" {
 
 variable "location" {
   type    = string
-  default = "East US"
+  default = "Central US" # Changed from East US (Central/West have better Free Trial quotas)
 }
 
 variable "app_service_plan_name" {
@@ -15,5 +15,5 @@ variable "app_service_plan_name" {
 
 variable "app_service_name" {
   type    = string
-  default = "webapp-poc17-unique-name" # Change this to be globally unique
+  default = "webapp-poc17-unique-name" # Ensure this name is globally unique
 }
