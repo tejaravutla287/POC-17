@@ -71,8 +71,10 @@ stages:
           export ARM_TENANT_ID=$tenantId
           export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 
-          echo "===> Initializing Backend with Reconfigure Flag..."
-          terraform init -reconfigure \
+          echo "===> Forcing Full Backend Reconfiguration..."
+          terraform init \
+            -backend=true \
+            -reconfigure \
             -backend-config="resource_group_name=$(resourceGroupName)" \
             -backend-config="storage_account_name=$(storageAccountName)" \
             -backend-config="container_name=$(containerName)" \
