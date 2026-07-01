@@ -56,14 +56,16 @@ stages:
         azureSubscription: '$(azureServiceConnection)'
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
-        addSpnToEnvironment: true  # Mandatory flag to unlock servicePrincipalId & servicePrincipalKey
+        addSpnToEnvironment: true
         workingDirectory: '$(System.ArtifactsDirectory)/drop-terraform'
         inlineScript: |
-          echo "===> Adding HashiCorp Repository & Installing Terraform..."
-          sudo apt-get update && sudo apt-get install -y gnupg software-properties-common curl
-          curl -fsSL https://hashicorp.com | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-          sudo apt-get update && sudo apt-get install terraform -y
+          echo "===> Downloading Independent Terraform Binary..."
+          curl -sSOL https://hashicorp.com
+          sudo apt-get install -y unzip
+          unzip -o terraform_1.5.7_linux_amd64.zip
+          sudo mv terraform /usr/local/bin/
+          rm terraform_1.5.7_linux_amd64.zip
+          terraform -version
 
           echo "===> Exporting Authentication tokens..."
           export ARM_CLIENT_ID=$servicePrincipalId
