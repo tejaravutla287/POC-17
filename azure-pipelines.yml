@@ -50,25 +50,30 @@ stages:
         artifactName: 'drop-terraform'
         downloadPath: '$(System.ArtifactsDirectory)'
 
-    - task: TerraformTaskV4@4
-      displayName: 'Terraform Init'
+    # Native Azure CLI step: Logs in, exports secrets dynamically, and runs native Terraform binary
+    - task: AzureCLI@2
+      displayName: 'Terraform Init and Apply'
       inputs:
-        provider: 'azurerm'
-        command: 'init'
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
         workingDirectory: '$(System.ArtifactsDirectory)/drop-terraform'
-        backendServiceArm: '$(azureServiceConnection)'
-        backendAzureRmResourceGroupName: '$(resourceGroupName)'
-        backendAzureRmStorageAccountName: '$(storageAccountName)'
-        backendAzureRmContainerName: '$(containerName)'
-        backendAzureRmKey: '$(tfstateKey)'
+        inlineScript: |
+          # Dynamically capture service principal details from the authenticated context
+          export ARM_CLIENT_ID=$servicePrincipalId
+          export ARM_CLIENT_SECRET=$servicePrincipalKey
+          export ARM_TENANT_ID=$tenantId
+          export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 
-    - task: TerraformTaskV4@4
-      displayName: 'Terraform Apply'
-      inputs:
-        provider: 'azurerm'
-        command: 'apply'
-        workingDirectory: '$(System.ArtifactsDirectory)/drop-terraform'
-        environmentServiceNameAzureRM: '$(azureServiceConnection)'
+          echo "===> Initializing Backend..."
+          terraform init \
+            -backend-config="resource_group_name=$(resourceGroupName)" \
+            -backend-config="storage_account_name=$(storageAccountName)" \
+            -backend-config="container_name=$(containerName)" \
+            -backend-config="key=$(tfstateKey)"
+
+          echo "===> Applying Configuration..."
+          terraform apply -auto-approve
 
 - stage: DeployApp
   displayName: 'Deploy Application Code'
