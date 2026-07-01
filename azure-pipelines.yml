@@ -59,47 +59,5 @@ stages:
         addSpnToEnvironment: true
         workingDirectory: '$(System.ArtifactsDirectory)/drop-terraform'
         inlineScript: |
-          echo "===> Fetching Standalone Linux Binary..."
-          wget -q https://hashicorp.com
-          sudo apt-get install -y unzip
-          unzip -o terraform_1.5.7_linux_amd64.zip
-          sudo mv terraform /usr/local/bin/
-          rm terraform_1.5.7_linux_amd64.zip
-          terraform -version
-
-          echo "===> Exporting Authentication tokens..."
-          export ARM_CLIENT_ID=$servicePrincipalId
-          export ARM_CLIENT_SECRET=$servicePrincipalKey
-          export ARM_TENANT_ID=$tenantId
-          export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-
-          echo "===> Initializing Backend..."
-          terraform init \
-            -backend-config="resource_group_name=$(resourceGroupName)" \
-            -backend-config="storage_account_name=$(storageAccountName)" \
-            -backend-config="container_name=$(containerName)" \
-            -backend-config="key=$(tfstateKey)"
-
-          echo "===> Applying Configuration..."
-          terraform apply -auto-approve
-
-- stage: DeployApp
-  displayName: 'Deploy Application Code'
-  dependsOn: DeployInfrastructure
-  jobs:
-  - job: Deploy
-    steps:
-    - task: DownloadBuildArtifacts@0
-      inputs:
-        buildType: 'current'
-        downloadType: 'single'
-        artifactName: 'drop-app'
-        downloadPath: '$(System.ArtifactsDirectory)'
-
-    - task: AzureRmWebAppDeployment@4
-      inputs:
-        ConnectionType: 'AzureRM'
-        azureSubscription: '$(azureServiceConnection)'
-        appType: 'webApp'
-        WebAppName: 'webapp-poc17-unique-name' 
-        Package: '$(System.ArtifactsDirectory)/drop-app/app.zip'
+          echo "===> Downloading Independent Terraform Binary to Temporary Location..."
+          wget -q -O /tmp/
