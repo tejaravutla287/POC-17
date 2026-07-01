@@ -21,7 +21,7 @@ stages:
       inputs:
         buildType: 'specific'
         project: '$(System.TeamProject)'
-        definition: '1' 
+        definition: '20260701.19' 
         buildVersionToDownload: 'latest'
         artifactName: 'drop-terraform'
         downloadPath: '$(System.ArtifactsDirectory)'
@@ -91,7 +91,7 @@ stages:
       inputs:
         buildType: 'specific'
         project: '$(System.TeamProject)'
-        definition: '1' 
+        definition: '20260701.19' 
         buildVersionToDownload: 'latest'
         artifactName: 'drop-app'
         downloadPath: '$(System.ArtifactsDirectory)'
