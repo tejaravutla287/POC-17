@@ -37,76 +37,76 @@ stages:
         ArtifactName: 'drop-terraform'
         publishLocation: 'Container'
 
-- stage: DeployInfrastructure
-  displayName: 'Provision Infrastructure'
-  dependsOn: Build
-  jobs:
-  - job: Terraform
-    steps:
-    - task: DownloadBuildArtifacts@0
-      inputs:
-        buildType: 'current'
-        downloadType: 'single'
-        artifactName: 'drop-terraform'
-        downloadPath: '$(System.ArtifactsDirectory)'
+# - stage: DeployInfrastructure
+#   displayName: 'Provision Infrastructure'
+#   dependsOn: Build
+#   jobs:
+#   - job: Terraform
+#     steps:
+#     - task: DownloadBuildArtifacts@0
+#       inputs:
+#         buildType: 'current'
+#         downloadType: 'single'
+#         artifactName: 'drop-terraform'
+#         downloadPath: '$(System.ArtifactsDirectory)'
 
-    - task: AzureCLI@2
-      displayName: 'Install Terraform, Auto-Create Backend, and Apply'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        addSpnToEnvironment: true
-        inlineScript: |
-          echo "===> Installing Terraform via Snap..."
-          sudo snap install terraform --classic
+#     - task: AzureCLI@2
+#       displayName: 'Install Terraform, Auto-Create Backend, and Apply'
+#       inputs:
+#         azureSubscription: '$(azureServiceConnection)'
+#         scriptType: 'bash'
+#         scriptLocation: 'inlineScript'
+#         addSpnToEnvironment: true
+#         inlineScript: |
+#           echo "===> Installing Terraform via Snap..."
+#           sudo snap install terraform --classic
           
-          echo "===> Verifying local installation:"
-          terraform -version
+#           echo "===> Verifying local installation:"
+#           terraform -version
 
-          echo "===> Checking and Autocreating Missing Backend Storage Assets..."
-          # Natively ensure the global state resource group exists
-          az group create --name "$(resourceGroupName)" --location "EastUS"
+#           echo "===> Checking and Autocreating Missing Backend Storage Assets..."
+#           # Natively ensure the global state resource group exists
+#           az group create --name "$(resourceGroupName)" --location "EastUS"
           
-          # Natively verify and provision the unique storage engine container
-          if ! az storage account show --name "$(storageAccountName)" --resource-group "$(resourceGroupName)" &>/dev/null; then
-            echo "Storage Account not found. Provisioning standard tier dynamic storage engine..."
-            az storage account create \
-              --name "$(storageAccountName)" \
-              --resource-group "$(resourceGroupName)" \
-              --location "EastUS" \
-              --sku Standard_LRS \
-              --encryption-services blob
-          fi
+#           # Natively verify and provision the unique storage engine container
+#           if ! az storage account show --name "$(storageAccountName)" --resource-group "$(resourceGroupName)" &>/dev/null; then
+#             echo "Storage Account not found. Provisioning standard tier dynamic storage engine..."
+#             az storage account create \
+#               --name "$(storageAccountName)" \
+#               --resource-group "$(resourceGroupName)" \
+#               --location "EastUS" \
+#               --sku Standard_LRS \
+#               --encryption-services blob
+#           fi
           
-          # Force establish the logical workspace target container
-          az storage container create \
-            --name "$(containerName)" \
-            --account-name "$(storageAccountName)" \
-            --auth-mode login
+#           # Force establish the logical workspace target container
+#           az storage container create \
+#             --name "$(containerName)" \
+#             --account-name "$(storageAccountName)" \
+#             --auth-mode login
 
-          echo "===> Finding the exact folder containing Terraform files..."
-          TARGET_DIR=$(find $(System.ArtifactsDirectory) -name "main.tf" -exec dirname {} \; | head -n 1)
+#           echo "===> Finding the exact folder containing Terraform files..."
+#           TARGET_DIR=$(find $(System.ArtifactsDirectory) -name "main.tf" -exec dirname {} \; | head -n 1)
           
-          if [ -z "$TARGET_DIR" ]; then
-            echo "##[error] Could not find main.tf in target directories."
-            exit 1
-          fi
+#           if [ -z "$TARGET_DIR" ]; then
+#             echo "##[error] Could not find main.tf in target directories."
+#             exit 1
+#           fi
           
-          cd "$TARGET_DIR"
+#           cd "$TARGET_DIR"
 
-          echo "===> Exporting Authentication tokens..."
-          export ARM_CLIENT_ID=$servicePrincipalId
-          export ARM_CLIENT_SECRET=$servicePrincipalKey
-          export ARM_TENANT_ID=$tenantId
-          export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+#           echo "===> Exporting Authentication tokens..."
+#           export ARM_CLIENT_ID=$servicePrincipalId
+#           export ARM_CLIENT_SECRET=$servicePrincipalKey
+#           export ARM_TENANT_ID=$tenantId
+#           export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 
-          echo "===> Running Backend Initialization with Auto-created Workspace..."
-          terraform init -reconfigure \
-            -backend-config="resource_group_name=$(resourceGroupName)" \
-            -backend-config="storage_account_name=$(storageAccountName)" \
-            -backend-config="container_name=$(containerName)" \
-            -backend-config="key=$(tfstateKey)"
+#           echo "===> Running Backend Initialization with Auto-created Workspace..."
+#           terraform init -reconfigure \
+#             -backend-config="resource_group_name=$(resourceGroupName)" \
+#             -backend-config="storage_account_name=$(storageAccountName)" \
+#             -backend-config="container_name=$(containerName)" \
+#             -backend-config="key=$(tfstateKey)"
 
-          echo "===> Executing Architecture Plan Verification..."
-          terraform apply -auto-approve
+#           echo "===> Executing Architecture Plan Verification..."
+#           terraform apply -auto-approve
