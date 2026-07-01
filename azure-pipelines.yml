@@ -50,14 +50,8 @@ stages:
         artifactName: 'drop-terraform'
         downloadPath: '$(System.ArtifactsDirectory)'
 
-    # Uses Microsoft's mirrors to bypass public IP 429 rate limits safely
-    - task: TerraformInstaller@1
-      displayName: 'Install Stable Terraform Binary'
-      inputs:
-        terraformVersion: 'latest'
-
     - task: AzureCLI@2
-      displayName: 'Terraform Init and Apply'
+      displayName: 'Install Terraform and Apply'
       inputs:
         azureSubscription: '$(azureServiceConnection)'
         scriptType: 'bash'
@@ -65,7 +59,15 @@ stages:
         addSpnToEnvironment: true
         workingDirectory: '$(System.ArtifactsDirectory)/drop-terraform'
         inlineScript: |
-          echo "===> Setting up Authentication variables..."
+          echo "===> Fetching Standalone Linux Binary..."
+          wget -q https://hashicorp.com
+          sudo apt-get install -y unzip
+          unzip -o terraform_1.5.7_linux_amd64.zip
+          sudo mv terraform /usr/local/bin/
+          rm terraform_1.5.7_linux_amd64.zip
+          terraform -version
+
+          echo "===> Exporting Authentication tokens..."
           export ARM_CLIENT_ID=$servicePrincipalId
           export ARM_CLIENT_SECRET=$servicePrincipalKey
           export ARM_TENANT_ID=$tenantId
