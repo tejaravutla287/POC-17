@@ -54,25 +54,25 @@ stages:
         artifactName: 'drop-terraform'
         downloadPath: '$(System.ArtifactsDirectory)'
 
-    # Initialize Terraform with Azure Backend
-    - task: TerraformCLI@0
+    # Initialize Terraform using Native Task
+    - task: TerraformTaskV4@4
       inputs:
+        provider: 'azurerm'
         command: 'init'
         workingDirectory: '$(System.ArtifactsDirectory)/drop-terraform'
-        backendType: 'azurerm'
         backendServiceArm: '$(azureServiceConnection)'
         backendAzureRmResourceGroupName: '$(resourceGroupName)'
         backendAzureRmStorageAccountName: '$(storageAccountName)'
         backendAzureRmContainerName: '$(containerName)'
         backendAzureRmKey: '$(tfstateKey)'
 
-    # Apply Infrastructure
-    - task: TerraformCLI@0
+    # Apply Infrastructure using Native Task
+    - task: TerraformTaskV4@4
       inputs:
+        provider: 'azurerm'
         command: 'apply'
         workingDirectory: '$(System.ArtifactsDirectory)/drop-terraform'
-        environmentServiceName: '$(azureServiceConnection)'
-        commandOptions: '-auto-approve'
+        environmentServiceNameAzureRM: '$(azureServiceConnection)'
 
 - stage: DeployApp
   displayName: 'Deploy Application Code'
