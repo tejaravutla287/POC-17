@@ -6,12 +6,11 @@ pool:
 variables:
   azureServiceConnection: 'MyAzureServiceConnection'
   resourceGroupName: 'rg-terraform-backend'
-  storageAccountName: 'stpoc17backend'
+  storageAccountName: 'poc17storageacc'
   containerName: 'tfstate'
   tfstateKey: 'poc17.tfstate'
   webAppName: 'webapp-poc17-unique-name' # Must exactly match var.app_service_name in variables.tf
-  # ADDED: Put your Build Pipeline's exact name here so the agent can find the files for manual runs
-  buildPipelineName: 'POC-17-CI' 
+  buildPipelineName: 'POC-17-CI' # Ensure this matches your exact Build pipeline text name string
 
 stages:
 - stage: ProvisionInfrastructure
@@ -19,20 +18,18 @@ stages:
   jobs:
   - job: TerraformDeploy
     steps:
-    # Dynamically pull the latest stable Terraform artifacts using the pipeline name
     - task: DownloadBuildArtifacts@0
       displayName: 'Download Latest Terraform Configuration'
       inputs:
         buildType: 'specific'
         project: '$(System.TeamProject)'
-        definition: '$(buildPipelineName)' # Uses the stable string variable name text safely
+        definition: '$(buildPipelineName)' 
         buildVersionToDownload: 'latest' 
         artifactName: 'drop-terraform'
         downloadPath: '$(System.ArtifactsDirectory)'
 
-    # Native Azure CLI step: Installs Snap Terraform and applies the infrastructure plan
     - task: AzureCLI@2
-      displayName: 'Install Terraform and Apply'
+      displayName: 'Verify Backend, Install Terraform, and Apply'
       inputs:
         azureSubscription: '$(azureServiceConnection)'
         scriptType: 'bash'
@@ -42,6 +39,24 @@ stages:
           echo "===> Installing Terraform via Snap..."
           sudo snap install terraform --classic
           
+          echo "===> Natively ensuring backend alignment in CentralUS..."
+          # Fixed: Enforces CentralUS region context natively to prevent 404 resource lookup failure
+          az group create --name "$(resourceGroupName)" --location "CentralUS"
+          
+          if ! az storage account show --name "$(storageAccountName)" --resource-group "$(resourceGroupName)" &>/dev/null; then
+            az storage account create \
+              --name "$(storageAccountName)" \
+              --resource-group "$(resourceGroupName)" \
+              --location "CentralUS" \
+              --sku Standard_LRS \
+              --encryption-services blob
+          fi
+          
+          az storage container create \
+            --name "$(containerName)" \
+            --account-name "$(storageAccountName)" \
+            --auth-mode login
+
           echo "===> Finding the exact folder containing Terraform files..."
           TARGET_DIR=$(find $(System.ArtifactsDirectory) -name "main.tf" -exec dirname {} \; | head -n 1)
           
@@ -74,18 +89,15 @@ stages:
   jobs:
   - job: AppDeploy
     steps:
-    # Dynamically pull the latest application code zip package using the pipeline name
     - task: DownloadBuildArtifacts@0
-      displayName: 'Download Latest Web App Package'
       inputs:
         buildType: 'specific'
         project: '$(System.TeamProject)'
-        definition: '$(buildPipelineName)' # Uses the stable string variable name text safely
+        definition: '$(buildPipelineName)' 
         buildVersionToDownload: 'latest' 
         artifactName: 'drop-app'
         downloadPath: '$(System.ArtifactsDirectory)'
 
-    # Push application code archive straight to the newly confirmed free Linux App Service target
     - task: AzureRmWebAppDeployment@4
       displayName: 'Deploy App Package to Linux App Service'
       inputs:
