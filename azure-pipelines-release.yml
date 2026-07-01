@@ -1,4 +1,4 @@
-trigger: none 
+trigger: none # Disabled automatic triggers so it can be run manually or chained after the build pipeline
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -6,10 +6,10 @@ pool:
 variables:
   azureServiceConnection: 'MyAzureServiceConnection'
   resourceGroupName: 'rg-terraform-backend'
-  storageAccountName: 'poc17storageacc'
+  storageAccountName: 'stpoc17backend'
   containerName: 'tfstate'
   tfstateKey: 'poc17.tfstate'
-  webAppName: 'webapp-poc17-unique-name'
+  webAppName: 'webapp-poc17-unique-name' # Must exactly match var.app_service_name in variables.tf
 
 stages:
 - stage: ProvisionInfrastructure
@@ -17,17 +17,20 @@ stages:
   jobs:
   - job: TerraformDeploy
     steps:
+    # Dynamically pull the latest Terraform artifacts from the build pipeline without hardcoding IDs
     - task: DownloadBuildArtifacts@0
+      displayName: 'Download Latest Terraform Configuration'
       inputs:
         buildType: 'specific'
         project: '$(System.TeamProject)'
-        definition: '22' 
-        buildVersionToDownload: 'latest'
+        definition: '$(System.TriggeringAlias)' 
+        buildVersionToDownload: 'latest' 
         artifactName: 'drop-terraform'
         downloadPath: '$(System.ArtifactsDirectory)'
 
+    # Native Azure CLI step: Installs Snap Terraform and applies the infrastructure plan
     - task: AzureCLI@2
-      displayName: 'Install Terraform, Auto-Create Backend, and Apply'
+      displayName: 'Install Terraform and Apply'
       inputs:
         azureSubscription: '$(azureServiceConnection)'
         scriptType: 'bash'
@@ -36,30 +39,12 @@ stages:
         inlineScript: |
           echo "===> Installing Terraform via Snap..."
           sudo snap install terraform --classic
-
-          echo "===> Checking and Autocreating Missing Backend Storage Assets..."
-          az group create --name "$(resourceGroupName)" --location "EastUS"
           
-          if ! az storage account show --name "$(storageAccountName)" --resource-group "$(resourceGroupName)" &>/dev/null; then
-            echo "Storage Account not found. Provisioning standard tier dynamic storage engine..."
-            az storage account create \
-              --name "$(storageAccountName)" \
-              --resource-group "$(resourceGroupName)" \
-              --location "EastUS" \
-              --sku Standard_LRS \
-              --encryption-services blob
-          fi
-          
-          az storage container create \
-            --name "$(containerName)" \
-            --account-name "$(storageAccountName)" \
-            --auth-mode login
-
           echo "===> Finding the exact folder containing Terraform files..."
           TARGET_DIR=$(find $(System.ArtifactsDirectory) -name "main.tf" -exec dirname {} \; | head -n 1)
           
           if [ -z "$TARGET_DIR" ]; then
-            echo "##[error] Could not find main.tf."
+            echo "##[error] Could not find main.tf inside downloaded artifacts."
             exit 1
           fi
           
@@ -71,14 +56,14 @@ stages:
           export ARM_TENANT_ID=$tenantId
           export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 
-          echo "===> Running Backend Initialization with Auto-created Workspace..."
+          echo "===> Clean Initializing Backend with Reconfigure..."
           terraform init -reconfigure \
             -backend-config="resource_group_name=$(resourceGroupName)" \
             -backend-config="storage_account_name=$(storageAccountName)" \
             -backend-config="container_name=$(containerName)" \
             -backend-config="key=$(tfstateKey)"
 
-          echo "===> Executing Architecture Plan Verification..."
+          echo "===> Applying Configuration..."
           terraform apply -auto-approve
 
 - stage: DeployApplication
@@ -87,19 +72,23 @@ stages:
   jobs:
   - job: AppDeploy
     steps:
+    # Dynamically pull the latest application code zip package from the build pipeline context
     - task: DownloadBuildArtifacts@0
+      displayName: 'Download Latest Web App Package'
       inputs:
         buildType: 'specific'
         project: '$(System.TeamProject)'
-        definition: '22' 
-        buildVersionToDownload: 'latest'
+        definition: '$(System.TriggeringAlias)' 
+        buildVersionToDownload: 'latest' 
         artifactName: 'drop-app'
         downloadPath: '$(System.ArtifactsDirectory)'
 
+    # Push application code archive straight to the newly confirmed free Linux App Service target
     - task: AzureRmWebAppDeployment@4
+      displayName: 'Deploy App Package to Linux App Service'
       inputs:
         ConnectionType: 'AzureRM'
         azureSubscription: '$(azureServiceConnection)'
-        appType: 'webApp'
+        appType: 'webAppLinux'
         WebAppName: '$(webAppName)'
         Package: '$(System.ArtifactsDirectory)/drop-app/app.zip'
