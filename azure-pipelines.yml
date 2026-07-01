@@ -10,6 +10,8 @@ variables:
   storageAccountName: 'stpoc17backend'       
   containerName: 'tfstate'
   tfstateKey: 'poc17.tfstate'
+  # Safe extraction source string variable
+  tfDownloadUrl: 'https://hashicorp.com'
 
 stages:
 - stage: Build
@@ -59,5 +61,51 @@ stages:
         addSpnToEnvironment: true
         workingDirectory: '$(System.ArtifactsDirectory)/drop-terraform'
         inlineScript: |
-          echo "===> Downloading Independent Terraform Binary to Temporary Location..."
-          wget -q -O /tmp/
+          echo "===> Downloading Independent Terraform Binary..."
+          # Fetch using the secure parsed pipeline variable context safely
+          wget -q -O /tmp/terraform.zip "$(tfDownloadUrl)"
+          
+          echo "===> Extracting and moving binary..."
+          sudo unzip -o /tmp/terraform.zip -d /tmp/
+          sudo mv /tmp/terraform /usr/local/bin/
+          rm -f /tmp/terraform.zip
+          
+          echo "===> Verifying local installation:"
+          terraform -version
+
+          echo "===> Exporting Authentication tokens..."
+          export ARM_CLIENT_ID=$servicePrincipalId
+          export ARM_CLIENT_SECRET=$servicePrincipalKey
+          export ARM_TENANT_ID=$tenantId
+          export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+
+          echo "===> Initializing Backend..."
+          terraform init \
+            -backend-config="resource_group_name=$(resourceGroupName)" \
+            -backend-config="storage_account_name=$(storageAccountName)" \
+            -backend-config="container_name=$(containerName)" \
+            -backend-config="key=$(tfstateKey)"
+
+          echo "===> Applying Configuration..."
+          terraform apply -auto-approve
+
+- stage: DeployApp
+  displayName: 'Deploy Application Code'
+  dependsOn: DeployInfrastructure
+  jobs:
+  - job: Deploy
+    steps:
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'drop-app'
+        downloadPath: '$(System.ArtifactsDirectory)'
+
+    - task: AzureRmWebAppDeployment@4
+      inputs:
+        ConnectionType: 'AzureRM'
+        azureSubscription: '$(azureServiceConnection)'
+        appType: 'webApp'
+        WebAppName: 'webapp-poc17-unique-name' 
+        Package: '$(System.ArtifactsDirectory)/drop-app/app.zip'
