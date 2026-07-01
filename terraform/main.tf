@@ -22,12 +22,12 @@ resource "azurerm_service_plan" "asp" {
   name                = var.app_service_plan_name
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  os_type             = "Linux" # Changed from Windows
+  os_type             = "Linux" 
   sku_name            = "F1"    # Completely FREE tier
 }
 
 # Linux Web App configuration
-resource "azurerm_linux_web_app" "app" { # Changed to linux_web_app
+resource "azurerm_linux_web_app" "app" { 
   name                = var.app_service_name
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
@@ -35,7 +35,6 @@ resource "azurerm_linux_web_app" "app" { # Changed to linux_web_app
 
   site_config {
     always_on = false # Required to be false for Free Tier
-    # Configured to host basic HTML/JS files natively
     application_stack {
       node_version = "18-lts" 
     }
@@ -46,9 +45,20 @@ resource "azurerm_linux_web_app" "app" { # Changed to linux_web_app
   }
 }
 
+# 1. New Log Analytics Workspace (Uses the PerGB2018 free-ingestion eligible pricing tier)
+resource "azurerm_log_analytics_workspace" "workspace" {
+  name                = "log-poc17-free"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  sku                 = "PerGB2018" # Standard tier required for linking (charges $0 if under trial limits)
+  retention_in_days   = 30
+}
+
+# 2. Updated Application Insights resource linked directly to the workspace above
 resource "azurerm_application_insights" "app_insights" {
   name                = "insights-poc17"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   application_type    = "web"
+  workspace_id        = azurerm_log_analytics_workspace.workspace.id # Natively links the workspace
 }
