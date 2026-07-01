@@ -10,6 +10,8 @@ variables:
   containerName: 'tfstate'
   tfstateKey: 'poc17.tfstate'
   webAppName: 'webapp-poc17-unique-name' # Must exactly match var.app_service_name in variables.tf
+  # ADDED: Put your Build Pipeline's exact name here so the agent can find the files for manual runs
+  buildPipelineName: 'POC-17-CI' 
 
 stages:
 - stage: ProvisionInfrastructure
@@ -17,13 +19,13 @@ stages:
   jobs:
   - job: TerraformDeploy
     steps:
-    # Dynamically pull the latest Terraform artifacts from the build pipeline without hardcoding IDs
+    # Dynamically pull the latest stable Terraform artifacts using the pipeline name
     - task: DownloadBuildArtifacts@0
       displayName: 'Download Latest Terraform Configuration'
       inputs:
         buildType: 'specific'
         project: '$(System.TeamProject)'
-        definition: '$(System.TriggeringAlias)' 
+        definition: '$(buildPipelineName)' # Uses the stable string variable name text safely
         buildVersionToDownload: 'latest' 
         artifactName: 'drop-terraform'
         downloadPath: '$(System.ArtifactsDirectory)'
@@ -72,13 +74,13 @@ stages:
   jobs:
   - job: AppDeploy
     steps:
-    # Dynamically pull the latest application code zip package from the build pipeline context
+    # Dynamically pull the latest application code zip package using the pipeline name
     - task: DownloadBuildArtifacts@0
       displayName: 'Download Latest Web App Package'
       inputs:
         buildType: 'specific'
         project: '$(System.TeamProject)'
-        definition: '$(System.TriggeringAlias)' 
+        definition: '$(buildPipelineName)' # Uses the stable string variable name text safely
         buildVersionToDownload: 'latest' 
         artifactName: 'drop-app'
         downloadPath: '$(System.ArtifactsDirectory)'
