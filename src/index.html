@@ -2,16 +2,25 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>My Sample DevOps App</title>
-
-    <!-- Application Insights SDK -->
-    <script type="text/javascript">
-    !function(T,l,y){var S={Config:{},init:function(e){var t=S.Config;for(var i in e)t[i]=e[i];S.queue=[]}};S.trackPage=function(){var e=arguments;S.queue.push(function(){S.pageView.apply(S,e)})};var e=l.createElement(y);e.src="https://azure.com",e.async=!0,l.getElementsByTagName(y)[0].parentNode.appendChild(e);var t=T[y]||(T[y]=S);t.init({
-        connectionString: "689c7751-4386-4a5f-8838-b691841bc416"
-    })} (window,document,"script");
+    <title>Azure DevOps POC</title>
     
-    // Automatically tracks the initial page view
-    appInsights.trackPage();
+    <!-- 1. Load the official Application Insights Script -->
+    <script src="https://azure.com" async></script>
+    
+    <!-- 2. Initialize with your Connection String -->
+    <script>
+        window.addEventListener('load', function() {
+            if (window.appInsights) {
+                appInsights.init({
+                    connectionString: "InstrumentationKey=689c7751-4386-4a5f-8838-b691841bc416;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=00b3eb92-abe7-4ac0-bfb1-0bbdb63a411f"
+                });
+                // Send the page view event immediately
+                appInsights.trackPage();
+                console.log("Application Insights connected!");
+            } else {
+                console.error("Application Insights failed to load from CDN.");
+            }
+        });
     </script>
 </head>
 <body>
