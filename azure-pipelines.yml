@@ -19,7 +19,7 @@ stages:
     steps:
     - task: ArchiveFiles@2
       inputs:
-        rootFolderOrFile: 'src'
+        rootFolderOrFile: '$(Build.SourcesDirectory)/src'
         includeRootFolder: false
         archiveType: 'zip'
         archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
