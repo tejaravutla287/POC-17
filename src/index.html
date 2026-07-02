@@ -1,29 +1,111 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Azure DevOps POC</title>
-    
-    <!-- 1. Load the official Application Insights Script -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified DevOps Dashboard POC</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #0078d4;
+            font-size: 2.2rem;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #efefef;
+            padding-bottom: 10px;
+        }
+        p {
+            font-size: 1.1rem;
+            color: #555;
+        }
+        .status-badge {
+            display: inline-block;
+            background-color: #dff6dd;
+            color: #107c41;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+        .btn-error {
+            background-color: #a80000;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 25px;
+            transition: background-color 0.2s;
+        }
+        .btn-error:hover {
+            background-color: #e81123;
+        }
+    </style>
+
+    <!-- 1. Official Microsoft Application Insights SDK Loader Script -->
     <script src="https://azure.com" async></script>
     
-    <!-- 2. Initialize with your Connection String -->
+    <!-- 2. SDK Initialization Setup -->
     <script>
         window.addEventListener('load', function() {
             if (window.appInsights) {
+                // Initialize Connection
                 appInsights.init({
-                    connectionString: "InstrumentationKey=689c7751-4386-4a5f-8838-b691841bc416;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=00b3eb92-abe7-4ac0-bfb1-0bbdb63a411f"
+                    connectionString: "InstrumentationKey=689c7751-4386-4a5f-8838-b691841bc416;IngestionEndpoint=https://azure.com",
+                    samplingPercentage: 100 // Enforce zero data throttling for the trial workspace
                 });
-                // Send the page view event immediately
+                
+                // Track Page Load Metric Immediately
                 appInsights.trackPage();
-                console.log("Application Insights connected!");
+                console.log("===> Application Insights connected successfully!");
             } else {
-                console.error("Application Insights failed to load from CDN.");
+                console.error("===> Error: Application Insights script failed to load from CDN.");
             }
         });
+
+        // Custom function to generate errors for your Error Rate tile
+        function triggerSampleError() {
+            try {
+                console.log("Attempting to run a broken telemetry action...");
+                // Intentional reference error to simulate application exceptions
+                runMissingDevOpsMethod(); 
+            } catch (error) {
+                if (window.appInsights) {
+                    appInsights.trackException({ exception: error });
+                    alert("Sample error telemetry sent to Azure dashboard tracking pipeline!");
+                }
+            }
+        }
     </script>
 </head>
 <body>
-    <h1>Hello from Azure App Service via Terraform & Azure DevOps!!!</h1>
+    <div class="container">
+        <h1>Hello from Azure App Service via Terraform & Azure DevOps!!!</h1>
+        <p>This web workspace is fully connected to Azure Application Insights monitor logs via client-side injection.</p>
+        
+        <div class="status-badge">
+            Telemetry Status: Active Tracking
+        </div>
+        
+        <br />
+        <!-- Clicking this button provides metrics data rows for your Error Rate chart tile -->
+        <button class="btn-error" onclick="triggerSampleError()">
+            Simulate App Error (Test Metrics)
+        </button>
+    </div>
 </body>
 </html>
